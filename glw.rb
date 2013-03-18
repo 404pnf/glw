@@ -14,7 +14,8 @@ arr = feed.entries
 pp "共有#{arr.size}篇文章"
 title = []; arr.each {|i| title << i.title}
 date = []; arr.each {|i| date << i.published.strftime("%F")} # yyyy-mm-dd
-html = []; arr.each {|i| html << (i.content || "内容丢失了")}
+html = []; arr.each {|i| html << (i.summary || "内容丢失了")} # content is <summary> not in <content>
+
 cat_raw = []; arr.each {|i| cat_raw << (i.categories || "没有分类")}
 cat = cat_raw.flatten.map {|c| sanitize c}
 # 用unless i.nil? 这个方法是错的，因为该逻辑是如果是nil就不存到content中了，后面的就都错位啦！！
@@ -24,7 +25,7 @@ cat = cat_raw.flatten.map {|c| sanitize c}
 # 但是没有任何数组中有nil
 # 最后才想到可能是错位了
 # content = []; html.each { |i| content << ReverseMarkdown.parse(i) unless i.nil? } # 如果不加上i.nil? 总会抛异常并说没有 text? 方法
-content = []; html.each { |i| content << ((ReverseMarkdown.parse(i) unless i.nil?) || "内容丢失了") } # 
+content = []; html.each { |i| content << ((ReverseMarkdown.parse(i) unless i.nil?) || "内容丢失了").gsub("\n", "\n\n") } # 
 slug = title.map {|t| (sanitize t || "no-title") }
 
 # let's make the output dir and categories dir
@@ -34,10 +35,12 @@ cat.to_set { |dir| FileUtils.mkdir_p "#{folder}/#{dir}" unless File.directory? "
 # let's zip them up
 # date, cat, slug, title, content
 #=begin
-date.zip(cat, slug, title, content) do |d, c, s, t, con|
-  File.open("#{folder}/#{c}/#{d}-#{s}.md", 'w') do |f|
+#date.zip(cat, slug, title, content) do |d, c, s, t, con|
+date.zip(cat, slug, title, html) do |d, c, s, t, con|
+  File.open("#{folder}/#{c}/#{d}-#{s}.html", 'w') do |f| # output .html
     yaml_sep = "---\n"
     f.puts yaml_sep
+    f.puts "layout: post"
     f.puts "title: #{t}"
     f.puts yaml_sep
     f.puts "\n"
@@ -55,8 +58,8 @@ end
 #pp cat.flatten
 #pp cat.to_set
 #pp date
-#pp html
-#pp content[33]
+pp html[15]
+#pp content[15]
 #pp yf
 #>> sep = ["---\n"].cycle
 #=> #<Enumerator: ["---\n"]:cycle>
